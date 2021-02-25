@@ -12,7 +12,7 @@ CC = gcc
 BDIR = $(PWD)
 
 # Programme sequentiel
-PROG = upper
+PROG = upperm
 
 #PVM_ROOT = /usr/share/pvm3
 #PVM_ARCH = LINUXI386
@@ -30,7 +30,7 @@ EXEC = $(PROG:%=$(BDIR)/%)
 all: $(EXEC)
 	
 $(BDIR)/%: point.o %.o 
-	$(CC) -o $@ upper.o point.o pb.o
+	$(CC) -o $@ upperm.o point.o pb.o
 
 .c.o: point.h pb.h upper.h
 	$(CC) $(CFLAGS) -c $< -o $@

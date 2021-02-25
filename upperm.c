@@ -12,10 +12,59 @@
  */
 
 #include "stdio.h"
-#include "stdlib.h"
+#include <stdlib.h>
 #include "point.h"
 #include "pb.h"
 #include "upper.h"
+
+
+static pb_t *Q[PB];		/* la pile de problemes */
+static int Q_nb;			/* l'index de tete de pile */
+
+/*
+ * initialise la file de problemes
+ * chacun des PB problemes est un
+ * probleme de tri de taille N
+ * stocke dans le premier champ de
+ * donnees de la structure.
+ */
+
+void init_queue(data)
+	int *data;
+{
+	int i;
+
+	for (i=0; i<PB; i++) {
+		Q[i] = (pb_t *)malloc(sizeof(pb_t));
+		Q[i]->taille1 = N;
+		Q[i]->taille2 = 0;
+		Q[i]->data1 = (int *)malloc(N*sizeof(int));
+		copy_int(Q[i]->data1, data + i*N, N);
+		Q[i]->data2 = NULL;
+		Q[i]->type = PB_UH;
+	}
+	Q_nb = PB;	
+}
+
+/*
+ * empile ou depile dans la 
+ * pile globale Q un probleme
+ */
+
+pb_t *depile()
+{
+	if (Q_nb > 0)
+		return Q[--Q_nb];
+	else
+		return NULL;
+}
+
+void empile(pb)
+	pb_t *pb;
+{
+	Q[Q_nb++] = pb;
+}
+
 /*
  * calcul recursif d'enveloppe
  * convexe par bissection
@@ -24,22 +73,54 @@ void upper_hull(point *pts)
 {
 	point *upper, *pts2;
 
-	upper = point_UH(pts); /* retourne 0 si plus de 4 points */
-	if (!upper) {
-		pts2 = point_part(pts);
-		upper_hull(pts);
-		upper_hull(pts2);
-		point_merge_UH(pts, pts2);
-	}
 	int i;
 	int tids[P];		/* tids fils */
 	int data[DATA];	/* donnees */
+	pb_t *pb;
 	int sender[1];
 
 	set_random_data(data);	/* initialisation aleatoire */
-	init_queue(data);				/* initialisation de la pile */
+	init_queue(data);		/* initialisation de la pile */
 	/* lancement des P esclaves */
 	pvm_spawn("/uppers", (char**)0, 0, "", P, tids);
+
+	/* envoi d'un probleme (de tri) a chaque esclave */
+	for (i=0; Q_nb>0 && i<P; i++)
+		send_pb(tids[i], depile());
+
+	while (1) {
+		pb_t *pb2;
+
+		/* reception d'une solution (type fusion) */
+		pb = receive_pb(-1, sender);
+		empile(pb);
+
+		/* dernier probleme ? */
+		if (pb->taille1 == DATA)
+			break;
+
+		pb = depile();
+		if (pb->type == PB_TRI) 
+			send_pb(*sender, pb);
+		else { // PB_FUS 
+			pb2 = depile(); /* 2eme pb pour fusion ... */
+			if (!pb2) {
+				empile(pb); // rien a faire
+			}
+			else {
+				if (pb2->type == PB_FUS) { /* on fusionne pb et pb2 */
+					pb->taille2 = pb2->taille1;
+					pb->data2 = pb2->data1;
+					send_pb(*sender, pb); /* envoi du probleme a l'esclave */
+				}
+				else { // PB_TRI
+					empile(pb);
+					send_pb(*sender, pb2); /* envoi du probleme a l'esclave */
+				}
+			}
+		}
+	}
+	
 
 }
 /* ancienne enveloppe convexe*/
@@ -66,7 +147,7 @@ void upper_hull(point *pts)
  * % evince upper_hull.pdf
  */
 
-main(int argc, char **argv)
+void main(int argc, char **argv)
 {
 	point *pts;
 

@@ -4,6 +4,7 @@
 #include "upper.h"
 #include "point.h"
 #include "pvm3.h"
+
 void print_array(int arr[][2], int size){
     printf("array : ");
     for (int i = 0; i<size;i++){
@@ -36,17 +37,6 @@ point ** convert__array_to_point(int ** arr,int nbPoints){
 	for (i=0; i<nbPoints-1; i++)
 		pts[i]->next = pts[i+1];
     return (point *)*pts;
-}
-
-/*
- * copie N entiers de src vers dst
- */
-void copy_int(dst, src, n)
-int *dst, *src, n;
-{
-	int i;
-	
-	for (i=0;i<n; i++) dst[i] = src[i];
 }
 
 /*
