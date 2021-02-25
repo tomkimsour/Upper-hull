@@ -15,10 +15,10 @@
 #include <stdlib.h>
 #include "point.h"
 #include "pb.h"
-#include "upper.h"
+#include "upperm.h"
 
-
-static pb_t *Q[PB];		/* la pile de problemes */
+int nbPts;
+static pb_t *Q[];			/* la pile de problemes */
 static int Q_nb;			/* l'index de tete de pile */
 
 /*
@@ -75,7 +75,7 @@ void upper_hull(point *pts)
 
 	int i;
 	int tids[P];		/* tids fils */
-	int data[DATA];	/* donnees */
+	int data[nbPts];	/* donnees */
 	pb_t *pb;
 	int sender[1];
 
@@ -96,31 +96,36 @@ void upper_hull(point *pts)
 		empile(pb);
 
 		/* dernier probleme ? */
-		if (pb->taille1 == DATA)
+		if (pb->taille1 == nbPts)
 			break;
-
-		pb = depile();
-		if (pb->type == PB_TRI) 
-			send_pb(*sender, pb);
-		else { // PB_FUS 
-			pb2 = depile(); /* 2eme pb pour fusion ... */
-			if (!pb2) {
-				empile(pb); // rien a faire
-			}
-			else {
-				if (pb2->type == PB_FUS) { /* on fusionne pb et pb2 */
-					pb->taille2 = pb2->taille1;
-					pb->data2 = pb2->data1;
-					send_pb(*sender, pb); /* envoi du probleme a l'esclave */
-				}
-				else { // PB_TRI
-					empile(pb);
-					send_pb(*sender, pb2); /* envoi du probleme a l'esclave */
-				}
-			}
-		}
+		
+	//	pb = depile();
+	//	if (pb->type == PB_UH) 
+	//		send_pb(*sender, pb);
+	//	else { // PB_MERGE 
+	//		pb2 = depile(); /* 2eme pb pour merge... */
+	//		if (!pb2) {
+	//			empile(pb); // rien a faire
+	//		}
+	//		else {
+	//			if (pb2->type == PB_MERGE) { /* on fusionne pb et pb2 */
+	//				pb->taille2 = pb2->taille1;
+	//				pb->data2 = pb2->data1;
+	//				send_pb(*sender, pb); /* envoi du probleme a l'esclave */
+	//			}
+	//			else { // PB_TRI
+	//				empile(pb);
+	//				send_pb(*sender, pb2); /* envoi du probleme a l'esclave */
+	//			}
+	//		}
+	//	} 
 	}
-	
+
+	pvm_mcast(tids, P, MSG_END); /* fin esclaves */
+	pb_print(pb);
+	pb_free(pb);
+	pvm_exit();
+	exit(0);
 
 }
 /* ancienne enveloppe convexe*/
@@ -155,7 +160,8 @@ void main(int argc, char **argv)
 		fprintf(stderr, "usage: %s <nb points>\n", *argv);
 		exit(-1);
 	}
-	pts = point_random(atoi(argv[1]));
+	nbPts = atoi(argv[1]);
+	pts = point_random(nbPts);
 	point_print_gnuplot(pts, 0); /* affiche l'ensemble des points */
 	upper_hull(pts);
 	point_print_gnuplot(pts, 1); /* affiche l'ensemble des points restant, i.e

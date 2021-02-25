@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <malloc.h>
 #include "pb.h"
-#include "upper.h"
+#include "upperm.h"
 #include "point.h"
 #include "pvm3.h"
 
