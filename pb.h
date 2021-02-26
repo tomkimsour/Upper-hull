@@ -12,6 +12,6 @@ struct st_pb {
 
 typedef struct st_pb pb_t;
 
-extern void print_array(int ** arr, int size);
+extern void print_array(int arr[][2], int size);
 extern int ** convert_point_to_array(point p);
 extern point * convert_array_to_point(int** arr);

@@ -33,13 +33,14 @@ void init_queue(data)
 	int *data;
 {
 	int i;
-
-	for (i=0; i<PB; i++) {
+	int PB = nbPts/4;
+	for ( i = 0; i < PB; i++)
+	{
 		Q[i] = (pb_t *)malloc(sizeof(pb_t));
-		Q[i]->taille1 = N;
+		Q[i]->taille1 = nbPts;
 		Q[i]->taille2 = 0;
-		Q[i]->data1 = (int *)malloc(N*sizeof(int));
-		copy_int(Q[i]->data1, data + i*N, N);
+		Q[i]->data1 = (int *)malloc(nbPts*sizeof(int));
+		copy_int(Q[i]->data1, data + i*nbPts, nbPts);
 		Q[i]->data2 = NULL;
 		Q[i]->type = PB_UH;
 	}
@@ -65,6 +66,9 @@ void empile(pb)
 	Q[Q_nb++] = pb;
 }
 
+void set_data(int data[],point *pts){
+
+}
 /*
  * calcul recursif d'enveloppe
  * convexe par bissection
@@ -75,12 +79,13 @@ void upper_hull(point *pts)
 
 	int i;
 	int tids[P];		/* tids fils */
-	int data[nbPts];	/* donnees */
+	int data[nbPts][2];	/* donnees */
 	pb_t *pb;
 	int sender[1];
 
-	set_random_data(data);	/* initialisation aleatoire */
+	set_data(data,pts);	/* initialisation aleatoire */
 	init_queue(data);		/* initialisation de la pile */
+	print_array(data,nbPts);
 	/* lancement des P esclaves */
 	pvm_spawn("/uppers", (char**)0, 0, "", P, tids);
 
@@ -88,17 +93,17 @@ void upper_hull(point *pts)
 	for (i=0; Q_nb>0 && i<P; i++)
 		send_pb(tids[i], depile());
 
-	while (1) {
-		pb_t *pb2;
-
-		/* reception d'une solution (type fusion) */
-		pb = receive_pb(-1, sender);
-		empile(pb);
-
-		/* dernier probleme ? */
-		if (pb->taille1 == nbPts)
-			break;
-		
+	//	while (1) {
+	//		pb_t *pb2;
+//	
+	//		/* reception d'une solution (type fusion) */
+	//		pb = receive_pb(-1, sender);
+	//		empile(pb);
+//	
+	//		/* dernier probleme ? */
+	//		if (pb->taille1 == nbPts)
+	//			break;
+	//		
 	//	pb = depile();
 	//	if (pb->type == PB_UH) 
 	//		send_pb(*sender, pb);
