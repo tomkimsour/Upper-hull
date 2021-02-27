@@ -6,5 +6,3 @@
 
 #define PB_UH 0
 #define PB_MERGE 1
-
-extern pts;

@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <unistd.h>
-#include "point.h"
+#include "../include/point.h"
 
 /*
  * (de)allocation
@@ -127,10 +127,19 @@ void point_print_gnuplot(point *pts, int solid)
 		fprintf(fp, "plot \"points_gnuplot\" ps 2, \"uh_gnuplot\" with lines lw 4\n");
 
 		fclose(fp);
-		system("gnuplot cmd_gnuplot");
+		int systemRet;
+		systemRet = system("gnuplot cmd_gnuplot");
+		if(systemRet == -1){
+			printf("gnuplot cmd_gnuplot failed\n");
+			exit(-1);
+		}
 		sleep(1);
 		//system("ps2pdf upper_hull.ps");
-		system("rm cmd_gnuplot points_gnuplot uh_gnuplot");
+		systemRet = system("rm cmd_gnuplot points_gnuplot uh_gnuplot");
+		if(systemRet == -1){
+			printf("gnuplot cmd_gnuplot failed\n");
+			exit(-1);
+		}
 		//system("rm cmd_gnuplot points_gnuplot uh_gnuplot upper_hull.ps");
 		printf ("courbe dans upper_hull.pdf\n");
 		printf ("evince upper_hull.pdf\n");
@@ -158,7 +167,8 @@ int point_nb(point *pts)
 
 point *point_part(point *pts)
 {
-	int nb, next;
+	int next;
+	//int nb;
 	point *cur, *mid, *midpred;
 
 	midpred = NULL;
@@ -264,6 +274,8 @@ point *point_tangent(point *pt, point *pts)
  */
 void point_common_tangent(point *pts1, point *pts2, point **ppt1, point **ppt2)
 {
+	if(pts1 == NULL)
+		exit(-1);
 	point *pt1, *pt2;
 
 	for (pt1=pts1; pt1!=NULL; pt1=pt1->next) {

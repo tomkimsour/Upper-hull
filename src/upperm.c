@@ -11,14 +11,15 @@
  * programme principal en sequentiel
  */
 
-#include "stdio.h"
+#include <stdio.h>
 #include <stdlib.h>
-#include "point.h"
-#include "pb.h"
-#include "upperm.h"
-
+#include <malloc.h>
+#include "../include/point.h"
+#include "../include/pb.h"
+#include "../include/upperm.h"
+#include "pvm3.h"
 int nbPts;
-static pb_t *Q[];			/* la pile de problemes */
+static pb_t *Q[50];			/* la pile de problemes */
 static int Q_nb;			/* l'index de tete de pile */
 
 /*
@@ -66,8 +67,12 @@ void empile(pb)
 	Q[Q_nb++] = pb;
 }
 
-void set_data(int data[],point *pts){
-
+/*
+*	modification de la structure de donnée pour pvm
+*/
+void set_data(int (*data)[2],point *pts){
+	data = convert_point_to_array(pts,nbPts);
+	print_array(data,nbPts);
 }
 /*
  * calcul recursif d'enveloppe
@@ -75,15 +80,15 @@ void set_data(int data[],point *pts){
  */
 void upper_hull(point *pts)
 {
-	point *upper, *pts2;
-
+	//point *upper;
+	// point *pts2;
 	int i;
 	int tids[P];		/* tids fils */
 	int data[nbPts][2];	/* donnees */
 	pb_t *pb;
-	int sender[1];
+	//int sender[1];
 
-	set_data(data,pts);	/* initialisation aleatoire */
+	set_data(data,pts);	/* initialisation de tableau data*/
 	init_queue(data);		/* initialisation de la pile */
 	print_array(data,nbPts);
 	/* lancement des P esclaves */
@@ -124,7 +129,7 @@ void upper_hull(point *pts)
 	//			}
 	//		}
 	//	} 
-	}
+	//}
 
 	pvm_mcast(tids, P, MSG_END); /* fin esclaves */
 	pb_print(pb);
@@ -157,7 +162,7 @@ void upper_hull(point *pts)
  * % evince upper_hull.pdf
  */
 
-void main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	point *pts;
 
@@ -172,5 +177,6 @@ void main(int argc, char **argv)
 	point_print_gnuplot(pts, 1); /* affiche l'ensemble des points restant, i.e
 					l'enveloppe, en reliant les points */
 	point_free(pts); 
+	return 0;
 }
 

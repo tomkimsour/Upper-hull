@@ -1,39 +1,25 @@
-# generation de programme PVM
-#  TP algorithmique parallele
-#  maitrise
-#  LL
-#  07/10/97
-# 
+CFLAGS = -g -Wall -pedantic -O3
+LDFLAGS = 
+#UNIT = -ftest-coverage -fprofile-arcs
 
-CC = gcc
+SRC = $(wildcard src/*.c)
+OBJ = $(addprefix obj/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
 
-# executable directory
-#BDIR  =  $(HOME)/bin/$(PVM_ARCH)
-BDIR = $(PWD)
+INCLUDE = $(wildcard include/*.h)
+NAME = upper_hull 
 
-# Programme sequentiel
-PROG = upperm
+all: $(NAME)
 
-#PVM_ROOT = /usr/share/pvm3
-#PVM_ARCH = LINUXI386
+remake: clean $(NAME)
 
-#PVM_ROOT = /home/commun_depinfo/enseignants/lemarchand/TPPVMM1/PvmLinux/pvm3
-#PVM_ARCH = LINUX64
+$(NAME): $(OBJ)
+	gcc obj/* $(LDFLAGS) -o -lpvm3 $@ 
 
-
-#### do not edit #####
-
-EXEC = $(PROG:%=$(BDIR)/%)
-
-#### generation rules #####
-
-all: $(EXEC)
-	
-$(BDIR)/%: point.o %.o 
-	$(CC) -o $@ upperm.o point.o pb.o
-
-.c.o: point.h pb.h upper.h
-	$(CC) $(CFLAGS) -c $< -o $@
+obj/%.o: src/%.c $(INCLUDE)
+	gcc -c -Iinclude $(CFLAGS) -o $@ $<
 
 clean:
-	rm -f *.o $(EXEC) points upper_hull.pdf
+	rm obj/*.o test/obj/*.o *.out *.gch -f
+
+clear:
+	rm obj/*.o *.gch -f

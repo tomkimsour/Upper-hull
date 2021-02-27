@@ -1,19 +1,19 @@
 #include <stdio.h>
 #include <malloc.h>
-#include "pb.h"
-#include "upperm.h"
-#include "point.h"
+#include "../include/point.h"
+#include "../include/upperm.h"
+#include "../include/pb.h"
 #include "pvm3.h"
 
-void print_array(int arr[][2], int size){
+void print_array(int (*arr)[2], int size){
     printf("array : ");
     for (int i = 0; i<size;i++){
-        printf("%d ",arr[i]);
+        printf("(%d,%d) ",arr[i][0],arr[i][1]);
     }
     printf("\n");
 }
 
-int ** convert_point_to_array(point p, int nbPoints){
+int ** convert_point_to_array(point *p, int nbPoints){
     int array[nbPoints][2];
     point cur;
     int i = 0;
@@ -142,3 +142,13 @@ int *sender;
 	return pb;
 }
 
+/*
+ * copie N entiers de src vers dst
+ */
+void copy_int(dst, src, n)
+int *dst, *src, n;
+{
+	int i;
+	
+	for (i=0;i<n; i++) dst[i] = src[i];
+}

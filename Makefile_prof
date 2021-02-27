@@ -1,0 +1,44 @@
+# generation de programme PVM
+#  TP algorithmique parallele
+#  maitrise
+#  LL
+#  07/10/97
+# 
+
+CC = gcc
+CFLAGS = -g -Wall -pedantic -O3
+
+SRC = $(wildcard src/*.c)
+OBJ = $(addprefix obj/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
+# executable directory
+#BDIR  =  $(HOME)/bin/$(PVM_ARCH)
+BDIR = $(PWD)
+
+# Programme sequentiel
+PROG = upperm
+
+#PVM_ROOT = /usr/share/pvm3
+#PVM_ARCH = LINUXI386
+
+#PVM_ROOT = /home/commun_depinfo/enseignants/lemarchand/TPPVMM1/PvmLinux/pvm3
+#PVM_ARCH = LINUX64
+
+
+#### do not edit #####
+
+EXEC = $(PROG:%=$(BDIR)/%)
+PVM_LIB = -lpvm3
+#### generation rules #####
+
+all: $(EXEC)
+	
+$(BDIR)/sortm: pb.o upperm.o point.o 
+	$(CC) -o $@ upperm.o pb.o point.o $(PVM_LIB) $(ARCHLIB)
+
+$(BDIR)/sorts: pb.o uppers.o point.o 
+	$(CC) -o $@ uppers.o pb.o point.o $(PVM_LIB) $(ARCHLIB)
+.c.o: point.h pb.h upper.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f *.o $(EXEC) points upper_hull.pdf
