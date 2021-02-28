@@ -32,6 +32,18 @@ static int Q_nb;			/* l'index de tete de pile */
 
 void init_queue(point * pts)
 {
+	point *upper, *pts2;
+	int nb;
+
+	nb = point_nb(pts);
+
+	upper = point_UH(pts); 
+	if (!upper) {
+		pts2 = point_part(pts);
+		upper_hull(pts);
+		upper_hull(pts2);
+		point_merge_UH(pts, pts2);
+	}
 	Q[0] = (pb_t *)malloc(sizeof(pb_t));
 	Q[0]->taille1 = nbPts;
 	Q[0]->taille2 = 0;
