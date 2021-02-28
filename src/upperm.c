@@ -30,22 +30,15 @@ static int Q_nb;			/* l'index de tete de pile */
  * donnees de la structure.
  */
 
-void init_queue(data)
-	int *data;
+void init_queue(point * pts)
 {
-	int i;
-	int PB = nbPts/4;
-	for ( i = 0; i < PB; i++)
-	{
-		Q[i] = (pb_t *)malloc(sizeof(pb_t));
-		Q[i]->taille1 = nbPts;
-		Q[i]->taille2 = 0;
-		Q[i]->data1 = (int *)malloc(nbPts*sizeof(int));
-		copy_int(Q[i]->data1, data + i*nbPts, nbPts);
-		Q[i]->data2 = NULL;
-		Q[i]->type = PB_UH;
-	}
-	Q_nb = PB;	
+	Q[0] = (pb_t *)malloc(sizeof(pb_t));
+	Q[0]->taille1 = nbPts;
+	Q[0]->taille2 = 0;
+	Q[0]->data1 = pts;
+	Q[0]->data2 = NULL;
+	Q[0]->type = PB_UH;
+	Q_nb = 1;	
 }
 
 /*
@@ -70,7 +63,7 @@ void empile(pb)
 /*
 *	modification de la structure de donnée pour pvm
 */
-void set_data(int (*data)[2],point *pts){
+void set_data(int **data,point *pts){
 	data = convert_point_to_array(pts,nbPts);
 	print_array(data,nbPts);
 }
@@ -84,55 +77,55 @@ void upper_hull(point *pts)
 	// point *pts2;
 	int i;
 	int tids[P];		/* tids fils */
-	int data[nbPts][2];	/* donnees */
 	pb_t *pb;
-	//int sender[1];
+	int sender[1];
 
-	set_data(data,pts);	/* initialisation de tableau data*/
-	init_queue(data);		/* initialisation de la pile */
-	print_array(data,nbPts);
+	//data = data_alloc(nbPts);
+	//set_data(data,pts);	/* initialisation de tableau data*/
+	init_queue(pts);		/* initialisation de la pile */
 	/* lancement des P esclaves */
 	pvm_spawn("/uppers", (char**)0, 0, "", P, tids);
 
-	/* envoi d'un probleme (de tri) a chaque esclave */
+	/* envoi d'un probleme (de tri) a un esclave*/
 	for (i=0; Q_nb>0 && i<P; i++)
 		send_pb(tids[i], depile());
 
-	//	while (1) {
-	//		pb_t *pb2;
+	while (1) {
+		pb_t *pb2;
 //	
-	//		/* reception d'une solution (type fusion) */
-	//		pb = receive_pb(-1, sender);
-	//		empile(pb);
+		/* reception d'une solution */
+		// receive doit faire la différence entre UH et merge
+		pb = receive_pb(-1, sender);
+		empile(pb);
 //	
 	//		/* dernier probleme ? */
 	//		if (pb->taille1 == nbPts)
 	//			break;
 	//		
-	//	pb = depile();
-	//	if (pb->type == PB_UH) 
-	//		send_pb(*sender, pb);
-	//	else { // PB_MERGE 
-	//		pb2 = depile(); /* 2eme pb pour merge... */
-	//		if (!pb2) {
-	//			empile(pb); // rien a faire
-	//		}
-	//		else {
-	//			if (pb2->type == PB_MERGE) { /* on fusionne pb et pb2 */
-	//				pb->taille2 = pb2->taille1;
-	//				pb->data2 = pb2->data1;
-	//				send_pb(*sender, pb); /* envoi du probleme a l'esclave */
-	//			}
-	//			else { // PB_TRI
-	//				empile(pb);
-	//				send_pb(*sender, pb2); /* envoi du probleme a l'esclave */
-	//			}
-	//		}
-	//	} 
-	//}
+		pb = depile();
+		if (pb->type == PB_UH) 
+			send_pb(*sender, pb);
+		else { // PB_MERGE 
+			pb2 = depile(); /* 2eme pb pour merge... */
+			if (!pb2) {
+				empile(pb); // rien a faire
+			}
+			else {
+				if (pb2->type == PB_MERGE) { /* on fusionne pb et pb2 */
+					pb->taille2 = pb2->taille1;
+					pb->data2 = pb2->data1;
+					send_pb(*sender, pb); /* envoi du probleme a l'esclave */
+				}
+				else { // PB_TRI
+					empile(pb);
+					send_pb(*sender, pb2); /* envoi du probleme a l'esclave */
+				}
+			}
+		} 
+	}
 
 	pvm_mcast(tids, P, MSG_END); /* fin esclaves */
-	pb_print(pb);
+	//pb_print(pb);
 	pb_free(pb);
 	pvm_exit();
 	exit(0);
