@@ -1,25 +1,50 @@
-CFLAGS = -g -Wall -pedantic -O3
-LDFLAGS = -lpvm3 
-#UNIT = -ftest-coverage -fprofile-arcs
+DIR_SRC = ./src/
 
-SRC = $(wildcard src/*.c)
-OBJ = $(addprefix obj/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
+DIR_INC = ./include/
 
-INCLUDE = $(wildcard include/*.h)
-NAME = upperm 
+BDIR=$(PDW)
 
-all: $(NAME)
+CFLAGS	= -Wall -W -Wextra -O3 -I$(DIR_INC) -DEPATH=\"$(BDIR)\" -L/lib/pvm3/lib
 
-remake: clean $(NAME)
+LDFLAGS = -lpvm3
 
-$(NAME): $(OBJ)
-	gcc obj/* $(LDFLAGS) -o $@ 
+RM	= rm -f
 
-obj/%.o: src/%.c $(INCLUDE)
-	gcc -c -Iinclude $(CFLAGS) -o $@ $<
+ECHO	= /bin/echo -e
+
+SRC	= 	$(DIR_SRC)uppers.c \
+	  	$(DIR_SRC)point.c
+
+OBJ	= $(SRC:.c=.o)
+
+CC	= gcc
+
+MASTER=upperm
+SLAVE=uppers
+
+all: $(MASTER) $(SLAVE)
+
+$(MASTER):$(OBJ)
+	@$(CC) $(OBJ) $(LDFLAGS) -o $(MASTER)
+	@$(ECHO) '\033[01;34m---------------\033[01;34m->\033[01;32mCompiled\033[01;34m<-\033[01;34m---------------\033[01;00m'
+
+$(SLAVE):$(OBJ)
+	@$(CC) $(OBJ) $(LDFLAGS) -o $(SLAVE)
+	@$(ECHO) '\033[01;34m---------------\033[01;34m->\033[01;32mCompiled\033[01;34m<-\033[01;34m---------------\033[01;00m'
 
 clean:
-	rm obj/*.o test/obj/*.o *.out *.gch -f
+	@$(RM) $(OBJ)
+	@$(ECHO) '\033[01;34m---------------\033[01;34m->\033[01;32m.o removed\033[01;34m<-\033[01;34m---------------\033[01;00m'
 
-clear:
-	rm obj/*.o *.gch -f
+fclean:	clean
+	@$(RM) $(MASTER) $(SLAVE)
+	@$(ECHO) '\033[01;34m---------------\033[01;34m->\033[01;32mBinary removed\033[01;34m<-\033[01;34m---------------\033[01;00m'
+
+re:	fclean all
+
+.c.o:
+	@$(CC) $(CFLAGS) $(LDFLAGS) -c $< -o $@ && \
+	 $(ECHO) "\033[01;32m" "[OK]"  $<  "\033[01;00m" || \
+	 $(ECHO) "\033[0;31m" "[XX]"  $<  "\033[01;00m"
+
+.PHONY:	re all clean fclean $(SLAVE) $(MASTER)  .c.o

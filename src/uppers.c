@@ -14,16 +14,13 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include "pvm3.h"
-#include "../include/upperm.h"
-#include "../include/point.h"
-#include "../include/pb.h"
+#include "point.h"
 
 /*
  * programme esclave
  */
 
-main()
-{
+int main(){
 	extern pb_t *receive_pb();
 	int parent, sender[1];	/* pere et envoyeur (non utilise) */
 	pb_t *pb;					/* probleme courant */
@@ -48,5 +45,5 @@ main()
 	}
 
 	pvm_exit();
-	exit(0);
+	return 0;
 }

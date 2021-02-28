@@ -13,14 +13,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
-#include "../include/point.h"
-#include "../include/pb.h"
-#include "../include/upperm.h"
 #include "pvm3.h"
+#include "point.h"
+
 int nbPts;
-static pb_t *Q[50];			/* la pile de problemes */
-static int Q_nb;			/* l'index de tete de pile */
+pb_t **Q;			/* la pile de problemes */
+int Q_nb;			/* l'index de tete de pile */
 
 /*
  * initialise la file de problemes
@@ -32,25 +30,10 @@ static int Q_nb;			/* l'index de tete de pile */
 
 void init_queue(point * pts)
 {
-	point *upper, *pts2;
-	int nb;
-
-	nb = point_nb(pts);
-
-	upper = point_UH(pts); 
-	if (!upper) {
-		pts2 = point_part(pts);
-		upper_hull(pts);
-		upper_hull(pts2);
-		point_merge_UH(pts, pts2);
-	}
-	Q[0] = (pb_t *)malloc(sizeof(pb_t));
-	Q[0]->taille1 = nbPts;
-	Q[0]->taille2 = 0;
-	Q[0]->data1 = pts;
-	Q[0]->data2 = NULL;
-	Q[0]->type = PB_UH;
-	Q_nb = 1;	
+	(void)pts;
+	int nbPB = nbPts/2+1;
+	Q = (pb_t **) malloc(nbPB * sizeof(pb_t *));
+	Q_nb = 0;	
 }
 
 /*
@@ -79,11 +62,82 @@ void set_data(int **data,point *pts){
 	data = convert_point_to_array(pts,nbPts);
 	print_array(data,nbPts);
 }
-/*
- * calcul recursif d'enveloppe
- * convexe par bissection
+
+int decoupage_pts_rec(point * pts, int nb, int b_index){
+	int e_index=b_index;
+	point *pts2;
+	pb_t *pb;
+	int nbelem;
+	if(nbPts>50){
+		pts2 = point_part(pts);
+		nbelem = nb/2 + nb%2;
+		b_index = decoupage_pts_rec(pts, nb/2, b_index);
+		e_index = decoupage_pts_rec(pts2, nbelem, e_index+1);
+	} else {
+		pb=pb_alloc();
+		pb->type=PB_UH;
+		pb->id=b_index;
+		pb->nb=1;
+		pb->taille1=nb;
+		pb->data1=pts;
+		empile(pb);
+	}
+	return e_index;
+}
+
+int decoupage_pts(point * pts){
+	return decoupage_pts_rec(pts,nbPts, 0) +1;
+}
+
+void ajout_merge_pb(pb_t ** merge_pb, pb_t* pb){
+	merge_pb[pb->id] = pb;
+	merge_pb[pb->id+pb->nb-1] = pb;
+}
+
+void retrait_merge_pb(pb_t ** merge_pb, pb_t* pb){
+	merge_pb[pb->id] = NULL;
+	merge_pb[pb->id+pb->nb-1] = NULL;
+} 
+/*	
+ *	cherche un ensemble de point voisin par id
  */
-void upper_hull(point *pts)
+pb_t* pb_voisin(pb_t** merge_pb, int size, pb_t* pb){
+	pb_t *res = NULL;
+	if(pb->id>0) res = merge_pb[pb->id-1];
+	if(res!=NULL){
+		retrait_merge_pb(merge_pb, res);
+		return res;
+	}
+	if(pb->id+pb->nb<size) res = merge_pb[pb->id+pb->nb];
+	if(res!=NULL){
+		retrait_merge_pb(merge_pb, res);
+		return res;
+	}
+	return res;
+}
+/*
+ * combine deux pb 
+ */
+void merge_pb_voisin(pb_t* pb1, pb_t* pb2){
+	pb1->type = PB_MERGE;
+	if(pb1->id>pb2->id){
+		pb1->id = pb2->id;
+		pb1->data2 = pb1->data1;
+		pb1->data1 = pb2->data1;
+		pb1->taille2 = pb1->taille1;
+		pb1->taille1 = pb2->taille1;
+	} 
+	else {
+		pb1->data2 = pb2->data1;
+		pb1->taille2 = pb2->taille1;
+	}
+	pb1->nb = pb1->nb+pb2->nb;
+}
+
+/*
+ * enveloppe convexe 
+ */
+void upper_hull_master(point *pts)
 {
 	//point *upper;
 	// point *pts2;
@@ -91,75 +145,62 @@ void upper_hull(point *pts)
 	int tids[P];		/* tids fils */
 	pb_t *pb;
 	int sender[1];
-
-	//data = data_alloc(nbPts);
-	//set_data(data,pts);	/* initialisation de tableau data*/
+	int nbPb;
+	printf("Initialisation des données\n");
 	init_queue(pts);		/* initialisation de la pile */
-	/* lancement des P esclaves */
-	pvm_spawn("/uppers", (char**)0, 0, "", P, tids);
+	//decoupage des problemes en groupes de points < 4
+	nbPb = decoupage_pts(pts);
 
-	/* envoi d'un probleme (de tri) a un esclave*/
+	//tableau stockant les merges en fonction de leur indice
+	printf("Creation tableau merge\n");
+	pb_t ** merge_pb = (pb_t **) malloc(nbPb * sizeof(pb_t*));
+	for(i=0;i<nbPb;i++) merge_pb[i] = NULL;
+	/* lancement des P esclaves */
+	printf("Lancement des fils\n");
+	pvm_spawn(EPATH "/uppers", (char**)0, 0, "", P, tids);
+
+	/* envoi d'un probleme UH a chaque esclave*/
 	for (i=0; Q_nb>0 && i<P; i++)
 		send_pb(tids[i], depile());
 
+	printf("Commencement des échanges de données entre maitre/esclave\n");
 	while (1) {
 		pb_t *pb2;
-//	
 		/* reception d'une solution */
-		// receive doit faire la différence entre UH et merge
 		pb = receive_pb(-1, sender);
-		empile(pb);
-//	
-	//		/* dernier probleme ? */
-	//		if (pb->taille1 == nbPts)
-	//			break;
-	//		
-		pb = depile();
-		if (pb->type == PB_UH) 
+
+		/* dernier probleme ? */
+		if (pb->id == 0 && pb->nb == nbPb)
+			break;
+		//traitement es problèmes UH	
+		if (Q_nb>0){
+			ajout_merge_pb(merge_pb,pb);
+			pb = depile();
 			send_pb(*sender, pb);
+		} 
 		else { // PB_MERGE 
-			pb2 = depile(); /* 2eme pb pour merge... */
-			if (!pb2) {
-				empile(pb); // rien a faire
-			}
-			else {
-				if (pb2->type == PB_MERGE) { /* on fusionne pb et pb2 */
-					pb->taille2 = pb2->taille1;
-					pb->data2 = pb2->data1;
-					send_pb(*sender, pb); /* envoi du probleme a l'esclave */
-				}
-				else { // PB_TRI
-					empile(pb);
-					send_pb(*sender, pb2); /* envoi du probleme a l'esclave */
-				}
+			pb2 = pb_voisin(merge_pb, nbPb, pb);
+			if(pb2!=NULL){
+				merge_pb_voisin(pb, pb2);
+				free(pb2);
+				send_pb(sender[0], pb);
+			} else{
+				ajout_merge_pb(merge_pb, pb);
 			}
 		} 
 	}
-
+	printf("Fin de transmission\n");
+	printf("Fin esclaves\n");
 	pvm_mcast(tids, P, MSG_END); /* fin esclaves */
-	//pb_print(pb);
 	pb_free(pb);
+	free(merge_pb);
+	
 	pvm_exit();
 	exit(0);
 
 }
-/* ancienne enveloppe convexe*/
-/*
 
-void upper_hull(point *pts)
-{
-	point *upper, *pts2;
 
-	upper = point_UH(pts); 
-	if (!upper) {
-		pts2 = point_part(pts);
-		upper_hull(pts);
-		upper_hull(pts2);
-		point_merge_UH(pts, pts2);
-	}
-}
-
-*/
 /*
  * upper <nb points>
  * exemple :
@@ -176,12 +217,15 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
 	nbPts = atoi(argv[1]);
+	printf("Début du programme\n");
+	printf("Generation aleatoire des points\n");
 	pts = point_random(nbPts);
 	point_print_gnuplot(pts, 0); /* affiche l'ensemble des points */
-	upper_hull(pts);
+	upper_hull_master(pts);
 	point_print_gnuplot(pts, 1); /* affiche l'ensemble des points restant, i.e
 					l'enveloppe, en reliant les points */
 	point_free(pts); 
+	free(Q);
 	return 0;
 }
 
